@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Kubernetes Manifests — DOOH Platform
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Apply all manifests with:   kubectl apply -f k8s/
+#
+# This file contains the foundational resources:
+#   - Namespace (logical isolation)
+#   - ConfigMap (non-sensitive config)
+#   - Secret (sensitive config — in prod, use AWS Secrets Manager or Vault)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+# All DOOH platform resources live in this namespace.
+# Keeps them isolated from other workloads on the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dooh
+  labels:
+    app: dooh-platform
+
+---
+
+# ── ConfigMap ─────────────────────────────────────────────────────────────────
+# Non-sensitive configuration shared across backend and celery pods.
+# If a value changes here, the pods need to be restarted to pick it up.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dooh-config
+  namespace: dooh
+data:
+  DEBUG:          "False"
+  ALLOWED_HOSTS:  "localhost,dooh-platform.example.com"
+  DB_HOST:        "postgres-service"
+  DB_PORT:        "5432"
+  DB_NAME:        "dooh_db"
+  REDIS_HOST:     "redis-service"
+  CELERY_BROKER_URL:     "redis://redis-service:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
+
+---
+
+# ── Secret ────────────────────────────────────────────────────────────────────
+# Sensitive values — base64 encoded.
+# In production, generate these with:
+#   echo -n "your-value" | base64
+#
+# Or better: use AWS Secrets Manager with the External Secrets Operator
+# so secrets are pulled from AWS and never stored in YAML files.
+#
+# These are placeholder values — replace before deploying.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dooh-secrets
+  namespace: dooh
+type: Opaque
+data:
+  # echo -n "your-secret-key" | base64
+  DJANGO_SECRET_KEY: eW91ci12ZXJ5LWxvbmctc2VjcmV0LWtleS1oZXJl
+  # echo -n "dooh_user" | base64
+  DB_USER:           ZG9vaF91c2Vy
+  # echo -n "dooh_pass" | base64
+  DB_PASSWORD:       ZG9vaF9wYXNz

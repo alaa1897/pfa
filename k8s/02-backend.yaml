@@ -1,0 +1,206 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Backend Deployment — Django + Daphne (ASGI)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Key points:
+#   - replicas: 3 → three backend pods for availability and load distribution
+#   - RollingUpdate strategy → zero-downtime deployments
+#   - Resource limits → prevents one pod from starving the node
+#   - Liveness + readiness probes → Kubernetes knows when a pod is healthy
+#
+# WebSocket and Kubernetes:
+#   WebSocket connections are long-lived. With multiple backend replicas,
+#   a board simulator connects to one pod and stays connected.
+#   If that pod dies, the simulator reconnects (handled in websocket.js).
+#   The Django Channels layer (Redis) routes messages between pods,
+#   so a Celery task on any node can push to a board connected to any pod.
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: dooh
+  labels:
+    app: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1    # At most 1 pod down during update
+      maxSurge: 1          # At most 1 extra pod during update
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: YOUR_ECR_REGISTRY/dooh-backend:latest  # Replace with your ECR URI
+          ports:
+            - containerPort: 8000
+          command:
+            - sh
+            - -c
+            - |
+              python manage.py migrate --noinput &&
+              python manage.py collectstatic --noinput &&
+              daphne -b 0.0.0.0 -p 8000 config.asgi:application
+          envFrom:
+            - configMapRef:
+                name: dooh-config
+            - secretRef:
+                name: dooh-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: media-storage
+              mountPath: /app/media
+          # Readiness: only send traffic when the app is fully booted
+          readinessProbe:
+            httpGet:
+              path: /api/v1/boards/map/
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          # Liveness: restart pod if it stops responding
+          livenessProbe:
+            httpGet:
+              path: /admin/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 5
+      volumes:
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: media-pvc
+
+---
+
+# PVC for uploaded ad media files — shared between backend and celery pods
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+  namespace: dooh
+spec:
+  accessModes:
+    - ReadWriteMany    # Multiple pods can read/write (requires EFS on AWS)
+  storageClassName: "efs-sc"   # AWS EFS storage class (set up separately)
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+
+# ClusterIP service — exposes backend to other pods inside the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: dooh
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Celery Worker Deployment
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Celery workers consume tasks from the Redis queue.
+# They run the same Docker image as the backend but with a different command.
+#
+# Scaling: increase replicas to handle more concurrent scheduled tasks.
+# In production, use KEDA (Kubernetes Event-Driven Autoscaler) to
+# auto-scale based on the Redis queue depth.
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: dooh
+  labels:
+    app: celery-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      containers:
+        - name: celery
+          image: YOUR_ECR_REGISTRY/dooh-backend:latest  # Same image as backend
+          command: ["celery", "-A", "config", "worker",
+                    "--loglevel=info", "--concurrency=4"]
+          envFrom:
+            - configMapRef:
+                name: dooh-config
+            - secretRef:
+                name: dooh-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: media-storage
+              mountPath: /app/media
+          # Celery doesn't expose HTTP — use a process check instead
+          livenessProbe:
+            exec:
+              command: ["celery", "-A", "config", "inspect", "ping", "-d",
+                        "celery@$HOSTNAME"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 10
+      volumes:
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: media-pvc
+
+---
+
+# HorizontalPodAutoscaler — scales celery workers based on CPU
+# In production, replace with KEDA for Redis queue-based scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: celery-hpa
+  namespace: dooh
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: celery-worker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

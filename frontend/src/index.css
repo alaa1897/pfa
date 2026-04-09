@@ -1,0 +1,104 @@
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:      #2563eb;
+  --primary-dark: #1d4ed8;
+  --success:      #16a34a;
+  --danger:       #dc2626;
+  --warning:      #d97706;
+  --bg:           #f8fafc;
+  --surface:      #ffffff;
+  --border:       #e2e8f0;
+  --text:         #0f172a;
+  --text-muted:   #64748b;
+  --radius:       8px;
+  --shadow:       0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:    0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* ── Layout helpers ───────────────────────────────────────────────────────── */
+.page          { min-height: 100vh; display: flex; flex-direction: column; }
+.container     { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+.card          { background: var(--surface); border: 1px solid var(--border);
+                 border-radius: var(--radius); box-shadow: var(--shadow); }
+.card-body     { padding: 1.5rem; }
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1 { font-size: 1.75rem; font-weight: 700; }
+h2 { font-size: 1.375rem; font-weight: 600; }
+h3 { font-size: 1.125rem; font-weight: 600; }
+
+/* ── Form elements ────────────────────────────────────────────────────────── */
+.form-group    { display: flex; flex-direction: column; gap: .375rem; margin-bottom: 1rem; }
+.form-label    { font-size: .875rem; font-weight: 500; color: var(--text); }
+.form-input    { padding: .625rem .875rem; border: 1px solid var(--border);
+                 border-radius: var(--radius); font-size: .9375rem;
+                 transition: border-color .15s, box-shadow .15s; outline: none; }
+.form-input:focus { border-color: var(--primary);
+                    box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.form-error    { font-size: .8125rem; color: var(--danger); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .625rem 1.25rem; border-radius: var(--radius); font-size: .9375rem;
+  font-weight: 500; border: none; cursor: pointer; transition: all .15s;
+  text-decoration: none; white-space: nowrap;
+}
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary  { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled)  { background: var(--primary-dark); }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled)   { background: #b91c1c; }
+.btn-outline  { background: transparent; color: var(--primary);
+                border: 1px solid var(--primary); }
+.btn-outline:hover:not(:disabled)  { background: rgba(37,99,235,.06); }
+.btn-ghost    { background: transparent; color: var(--text-muted); }
+.btn-ghost:hover:not(:disabled)    { background: var(--border); color: var(--text); }
+.btn-sm       { padding: .375rem .75rem; font-size: .875rem; }
+.btn-block    { width: 100%; }
+
+/* ── Badge / Status pills ─────────────────────────────────────────────────── */
+.badge        { display: inline-block; padding: .2rem .6rem; border-radius: 99px;
+                font-size: .75rem; font-weight: 600; text-transform: uppercase;
+                letter-spacing: .03em; }
+.badge-active    { background: #dcfce7; color: #15803d; }
+.badge-inactive  { background: #f1f5f9; color: #64748b; }
+.badge-pending   { background: #fef9c3; color: #a16207; }
+.badge-confirmed { background: #dbeafe; color: #1d4ed8; }
+.badge-cancelled { background: #fee2e2; color: #b91c1c; }
+.badge-completed { background: #f3e8ff; color: #7e22ce; }
+
+/* ── Leaflet overrides ────────────────────────────────────────────────────── */
+.leaflet-container { border-radius: var(--radius); }
+.leaflet-popup-content-wrapper { border-radius: var(--radius); box-shadow: var(--shadow-md); }
+.leaflet-popup-content { margin: 0; padding: 0; }
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border);
+           border-top-color: var(--primary); border-radius: 50%;
+           animation: spin .7s linear infinite; }
+
+/* ── Utilities ────────────────────────────────────────────────────────────── */
+.text-muted   { color: var(--text-muted); }
+.text-center  { text-align: center; }
+.mt-1 { margin-top: .5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: .5rem; }
+.gap-2 { gap: 1rem; }
+.w-full { width: 100%; }

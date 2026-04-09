@@ -1,0 +1,148 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Starts the full platform with a single command:   docker-compose up --build
+#
+# Services:
+#   db        → PostgreSQL 16 (stores all data)
+#   redis     → Redis 7 (Celery broker + Django Channels layer)
+#   backend   → Django + Daphne ASGI server (API + WebSocket)
+#   celery    → Celery worker (runs background tasks / ad scheduler)
+#   frontend  → React app served by Nginx (also proxies API calls)
+#
+# Networking:
+#   All services share the "dooh_net" bridge network.
+#   Only the frontend port (80) is exposed to the host machine.
+#   The backend is only reachable via Nginx proxy — not directly.
+#
+# Data persistence:
+#   postgres_data volume → database survives container restarts
+#   media_data volume    → uploaded ad files persist
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  # ── PostgreSQL Database ─────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: dooh_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-dooh_db}
+      POSTGRES_USER:     ${DB_USER:-dooh_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dooh_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dooh_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dooh_user} -d ${DB_NAME:-dooh_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Broker + Channel Layer) ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: dooh_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - dooh_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Django Backend (ASGI) ───────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dooh_backend
+    restart: unless-stopped
+    # Run migrations then start the server
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             python manage.py seed_boards &&
+             daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key-change-in-production}
+      DEBUG:             ${DEBUG:-True}
+      ALLOWED_HOSTS:     ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      DB_NAME:           ${DB_NAME:-dooh_db}
+      DB_USER:           ${DB_USER:-dooh_user}
+      DB_PASSWORD:       ${DB_PASSWORD:-dooh_pass}
+      DB_HOST:           db          # Docker DNS: "db" resolves to the db container
+      DB_PORT:           5432
+      REDIS_HOST:        redis       # Docker DNS: "redis" resolves to the redis container
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - media_data:/app/media        # Persist uploaded ad files
+      - static_data:/app/staticfiles
+    networks:
+      - dooh_net
+    depends_on:
+      db:
+        condition: service_healthy   # Wait for Postgres to be ready
+      redis:
+        condition: service_healthy   # Wait for Redis to be ready
+
+  # ── Celery Worker (Ad Scheduler) ────────────────────────────────────────────
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dooh_celery
+    restart: unless-stopped
+    # Celery worker process — listens for tasks from Redis
+    command: celery -A config worker --loglevel=info --concurrency=4
+    environment:
+      DJANGO_SECRET_KEY:     ${DJANGO_SECRET_KEY:-dev-secret-key-change-in-production}
+      DEBUG:                 ${DEBUG:-True}
+      DB_NAME:               ${DB_NAME:-dooh_db}
+      DB_USER:               ${DB_USER:-dooh_user}
+      DB_PASSWORD:           ${DB_PASSWORD:-dooh_pass}
+      DB_HOST:               db
+      DB_PORT:               5432
+      REDIS_HOST:            redis
+      CELERY_BROKER_URL:     redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - media_data:/app/media        # Needs access to media files to serve URLs
+    networks:
+      - dooh_net
+    depends_on:
+      - backend
+      - redis
+
+  # ── React Frontend (Nginx) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dooh_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"                      # Only port exposed to the host
+    networks:
+      - dooh_net
+    depends_on:
+      - backend
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:   # Database files
+  media_data:      # Uploaded ad images/videos
+  static_data:     # Django static files
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  dooh_net:
+    driver: bridge
