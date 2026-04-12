@@ -11,7 +11,7 @@
  * Uses react-leaflet which wraps Leaflet.js in React components.
  * Board data is fetched from GET /api/v1/boards/map/
  */
-
+import "leaflet/dist/leaflet.css";
 import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -45,6 +45,15 @@ const inactiveIcon = L.divIcon({
   popupAnchor: [0, -42],
 });
 
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+  }, [map]);
+  return null;
+}
 export default function BoardsMap() {
   const [boards, setBoards] = useState([]);
   const [selectedBoard, setSelectedBoard] = useState(null);
@@ -84,10 +93,12 @@ export default function BoardsMap() {
   return (
     <div className="map-wrapper">
       <MapContainer
+
         center={[36.8065, 10.1815]}   // Centred on Tunis
         zoom={12}
         className="leaflet-map"
       >
+        <InvalidateSize />
         {/* OpenStreetMap tiles — free, no API key required */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'

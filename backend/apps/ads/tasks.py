@@ -82,8 +82,8 @@ def schedule_ad_display(self, booking_id: int):
     )
 
     # Mark the booking as confirmed/playing
-    booking.status = Booking.Status.CONFIRMED
-    booking.save(update_fields=["status"])
+    Booking.objects.filter(id=booking.id).update(status=Booking.Status.CONFIRMED)
+
 
     # Schedule the "clear screen" task for when the ad finishes
     total_display_time = ad.duration_seconds * booking.repeat_count
@@ -120,7 +120,6 @@ def clear_board_screen(booking_id: int):
     )
 
     # Mark booking as completed
-    booking.status = Booking.Status.COMPLETED
-    booking.save(update_fields=["status"])
+    Booking.objects.filter(id=booking.id).update(status=Booking.Status.COMPLETED)
 
     logger.info(f"Booking #{booking_id} completed. Board #{booking.board_id} cleared.")

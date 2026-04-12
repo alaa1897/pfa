@@ -15,7 +15,7 @@
  *   - heartbeat_ack          → server acknowledged our ping
  */
 
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || "ws://localhost:8000";
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || "";
 
 class BoardWebSocket {
   constructor(boardId, onMessage) {

@@ -84,6 +84,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
+      - ./backend:/app
       - media_data:/app/media        # Persist uploaded ad files
       - static_data:/app/staticfiles
     networks:
@@ -115,6 +116,7 @@ services:
       CELERY_BROKER_URL:     redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
+      - ./backend:/app  
       - media_data:/app/media        # Needs access to media files to serve URLs
     networks:
       - dooh_net

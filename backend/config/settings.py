@@ -89,11 +89,11 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "dooh_db",
-        "USER": "traktour",      # ← your Mac username
-        "PASSWORD": "",          # ← empty password (Mac PostgreSQL default)
-        "HOST": "localhost",
-        "PORT": "5432",
+        "NAME": os.environ.get("DB_NAME", "dooh_db"),
+        "USER": os.environ.get("DB_USER", "traktour"),       # ← your Mac username
+        "PASSWORD": os.environ.get("DB_PASSWORD", ""),        # ← empty password (Mac PostgreSQL default)
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
     }
 }
 # ─── Custom User Model ────────────────────────────────────────────────────────
