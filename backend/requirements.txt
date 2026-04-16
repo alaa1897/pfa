@@ -21,4 +21,5 @@ psycopg2-binary>=2.9.9  # PostgreSQL adapter
 
 # ─── File Handling ────────────────────────────────────────────────────────────
 Pillow>=10.3.0          # Image processing (thumbnails, validation)
-
+# ─── Payments ─────────────────────────────────────────────────────────────────
+stripe>=8.0.0

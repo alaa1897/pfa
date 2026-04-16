@@ -25,3 +25,5 @@ Pillow>=10.3.0          # Image processing (thumbnails, validation)
 # ─── Dev / Testing ────────────────────────────────────────────────────────────
 pytest-django==4.8.0
 factory-boy==3.3.0
+# ─── Payments ─────────────────────────────────────────────────────────────────
+stripe>=8.0.0
