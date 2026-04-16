@@ -36,7 +36,8 @@ LOCAL_APPS = [
     "apps.accounts",   # Custom user model + JWT auth
     "apps.boards",     # Digital board registry + locations
     "apps.bookings",   # Booking engine + conflict detection
-    "apps.ads",        # Ad upload + media management
+    "apps.ads",          # Ad upload + media management
+    "apps.payments"      
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

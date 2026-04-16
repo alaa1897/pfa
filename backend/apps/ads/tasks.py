@@ -54,7 +54,6 @@ def schedule_ad_display(self, booking_id: int):
     if booking.status == Booking.Status.CANCELLED:
         logger.info(f"Booking #{booking_id} is cancelled. Skipping ad display.")
         return
-
     # Don't display if the ad hasn't been uploaded yet
     if not hasattr(booking, "ad"):
         logger.warning(f"Booking #{booking_id} has no ad uploaded. Skipping.")
