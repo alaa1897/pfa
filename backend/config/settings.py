@@ -36,7 +36,8 @@ LOCAL_APPS = [
     "apps.accounts",   # Custom user model + JWT auth
     "apps.boards",     # Digital board registry + locations
     "apps.bookings",   # Booking engine + conflict detection
-    "apps.ads",        # Ad upload + media management
+    "apps.ads",          # Ad upload + media management
+    "apps.payments"      
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -166,6 +167,11 @@ CELERY_TASK_TRACK_STARTED = True
 # ─── Media Files (Uploaded Ads) ───────────────────────────────────────────────
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
+
 
 # ─── Static Files ─────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"

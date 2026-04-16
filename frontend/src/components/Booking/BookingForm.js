@@ -1,16 +1,3 @@
-/**
- * BookingForm Component
- * ----------------------
- * Multi-step booking flow:
- *
- *   Step 1 — Pick a date
- *   Step 2 — Pick time slots from the availability calendar
- *   Step 3 — Upload the ad creative
- *   Step 4 — Confirm and submit
- *
- * This component handles all four steps in a single page with a progress bar.
- */
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
@@ -19,18 +6,18 @@ import toast from "react-hot-toast";
 import { useDropzone } from "react-dropzone";
 import { Upload, Clock, Calendar, CheckCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import { bookingsAPI, adsAPI } from "../../services/api";
+import PaymentForm from "../Payment/PaymentForm";
 import "./BookingForm.css";
 
-const STEPS = ["Date", "Time Slots", "Upload Ad", "Confirm"];
+const STEPS = ["Date", "Time Slots", "Upload Ad", "Confirm", "Payment"];
 
 export default function BookingForm({ board }) {
   const navigate = useNavigate();
 
-  // ── State ─────────────────────────────────────────────────────────────────
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState(addDays(new Date(), 1));
-  const [slots, setSlots] = useState([]);           // All 30-min slots for the day
-  const [selectedSlots, setSelectedSlots] = useState([]); // User's chosen slots
+  const [slots, setSlots] = useState([]);
+  const [selectedSlots, setSelectedSlots] = useState([]);
   const [repeatCount, setRepeatCount] = useState(1);
   const [adFile, setAdFile] = useState(null);
   const [adTitle, setAdTitle] = useState("");
@@ -39,7 +26,6 @@ export default function BookingForm({ board }) {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [bookingResult, setBookingResult] = useState(null);
 
-  // ── Fetch availability when date changes ──────────────────────────────────
   useEffect(() => {
     if (step === 1 && selectedDate) {
       setSlotsLoading(true);
@@ -51,7 +37,6 @@ export default function BookingForm({ board }) {
     }
   }, [step, selectedDate, board.id]);
 
-  // ── Slot selection — user can select a contiguous range ──────────────────
   const toggleSlot = (slot) => {
     if (!slot.is_available) return;
     const key = slot.start_time;
@@ -60,7 +45,6 @@ export default function BookingForm({ board }) {
     );
   };
 
-  // ── File dropzone ─────────────────────────────────────────────────────────
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/*": [], "video/mp4": [], "video/webm": [] },
     maxFiles: 1,
@@ -74,21 +58,18 @@ export default function BookingForm({ board }) {
     },
   });
 
-  // ── Calculate booking summary ─────────────────────────────────────────────
   const sortedSlots = [...selectedSlots].sort();
   const startTime = sortedSlots[0];
   const lastSlotStart = sortedSlots[sortedSlots.length - 1];
-  // End time = last slot start + 30 minutes
   const endTime = lastSlotStart
     ? new Date(new Date(lastSlotStart).getTime() + 30 * 60 * 1000).toISOString()
     : null;
   const totalPrice = board.price_per_slot * selectedSlots.length * repeatCount;
 
-  // ── Submit the full booking ───────────────────────────────────────────────
+  // Creates booking + uploads ad, then moves to payment step
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Step 1: Create the booking
       const { data: booking } = await bookingsAPI.createBooking({
         board: board.id,
         start_time: startTime,
@@ -96,18 +77,15 @@ export default function BookingForm({ board }) {
         repeat_count: repeatCount,
       });
 
-      // Step 2: Upload the ad and link it to the booking
       const formData = new FormData();
       formData.append("booking", booking.id);
       formData.append("file", adFile);
       formData.append("title", adTitle || adFile.name);
       formData.append("duration_seconds", adDuration);
-
       await adsAPI.uploadAd(formData);
 
       setBookingResult(booking);
-      toast.success("Booking confirmed! Your ad is scheduled.");
-      setStep(4); // Success step
+      setStep(4); // Go to payment step
 
     } catch (error) {
       const detail = error.response?.data?.detail || "Booking failed. Please try again.";
@@ -117,10 +95,13 @@ export default function BookingForm({ board }) {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const handlePaymentSuccess = () => {
+    toast.success("Payment successful! Your ad is scheduled.");
+    setStep(5); // Go to success screen
+  };
 
-  // Success screen
-  if (step === 4) {
+  // ── Success screen (step 5) ───────────────────────────────────────────────
+  if (step === 5) {
     return (
       <div className="booking-success">
         <CheckCircle size={56} color="#16a34a" />
@@ -174,7 +155,7 @@ export default function BookingForm({ board }) {
         </div>
       )}
 
-      {/* ── Step 1: Pick time slots ────────────────────────────────────────── */}
+      {/* ── Step 1: Pick time slots ───────────────────────────────────────── */}
       {step === 1 && (
         <div className="booking-step">
           <h3><Clock size={18} /> Choose Time Slots</h3>
@@ -182,7 +163,6 @@ export default function BookingForm({ board }) {
             Each slot is 30 minutes. Select one or more consecutive slots.
             <br />Showing: <strong>{format(selectedDate, "EEEE, MMMM d yyyy")}</strong>
           </p>
-
           {slotsLoading ? (
             <div className="slots-loading"><div className="spinner" /> Loading availability…</div>
           ) : (
@@ -205,7 +185,6 @@ export default function BookingForm({ board }) {
               })}
             </div>
           )}
-
           <div className="repeat-control">
             <label className="form-label">Repeat count (plays per slot)</label>
             <div className="repeat-input">
@@ -214,7 +193,6 @@ export default function BookingForm({ board }) {
               <button className="btn btn-ghost btn-sm" onClick={() => setRepeatCount(r => Math.min(20, r + 1))}>+</button>
             </div>
           </div>
-
           <div className="step-footer">
             <button className="btn btn-ghost" onClick={() => setStep(0)}>
               <ChevronLeft size={16} /> Back
@@ -235,7 +213,6 @@ export default function BookingForm({ board }) {
         <div className="booking-step">
           <h3><Upload size={18} /> Upload Your Ad</h3>
           <p className="step-hint">Accepted formats: JPG, PNG, GIF, MP4, WebM. Max 50 MB.</p>
-
           <div {...getRootProps()} className={`dropzone ${isDragActive ? "active" : ""} ${adFile ? "has-file" : ""}`}>
             <input {...getInputProps()} />
             {adFile ? (
@@ -256,7 +233,6 @@ export default function BookingForm({ board }) {
               </div>
             )}
           </div>
-
           <div className="form-group mt-2">
             <label className="form-label">Ad title (optional)</label>
             <input
@@ -266,7 +242,6 @@ export default function BookingForm({ board }) {
               onChange={e => setAdTitle(e.target.value)}
             />
           </div>
-
           <div className="form-group">
             <label className="form-label">Display duration per play (seconds)</label>
             <input
@@ -278,7 +253,6 @@ export default function BookingForm({ board }) {
               onChange={e => setAdDuration(Number(e.target.value))}
             />
           </div>
-
           <div className="step-footer">
             <button className="btn btn-ghost" onClick={() => setStep(1)}>
               <ChevronLeft size={16} /> Back
@@ -298,7 +272,6 @@ export default function BookingForm({ board }) {
       {step === 3 && (
         <div className="booking-step">
           <h3><CheckCircle size={18} /> Confirm Booking</h3>
-
           <div className="confirm-summary">
             <div className="summary-row">
               <span>Board</span>
@@ -331,7 +304,6 @@ export default function BookingForm({ board }) {
               <strong>{totalPrice.toFixed(2)} TND</strong>
             </div>
           </div>
-
           <div className="step-footer">
             <button className="btn btn-ghost" onClick={() => setStep(2)}>
               <ChevronLeft size={16} /> Back
@@ -341,9 +313,23 @@ export default function BookingForm({ board }) {
               disabled={loading}
               onClick={handleSubmit}
             >
-              {loading ? <><div className="spinner" /> Processing…</> : "Confirm Booking"}
+              {loading ? <><div className="spinner" /> Processing…</> : "Confirm & Proceed to Payment"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Step 4: Payment ───────────────────────────────────────────────── */}
+      {step === 4 && bookingResult && (
+        <div className="booking-step">
+          <h3>💳 Complete Payment</h3>
+          <p className="step-hint">
+            Total: <strong>{totalPrice.toFixed(2)} TND</strong>
+          </p>
+          <PaymentForm
+            bookingId={bookingResult.id}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
         </div>
       )}
     </div>
