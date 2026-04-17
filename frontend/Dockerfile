@@ -22,8 +22,7 @@ WORKDIR /app
 # Copy package files first — Docker layer caching means npm install only
 # re-runs when package.json actually changes (not on every code change)
 COPY package.json package-lock.json* ./
-RUN npm ci --silent
-
+RUN npm install -g npm@latest && npm ci
 # Copy source and build
 COPY . .
 RUN npm run build
