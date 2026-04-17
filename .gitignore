@@ -36,3 +36,4 @@ k8s/secrets-production.yaml
 
 
 .env.development
+.env.production
