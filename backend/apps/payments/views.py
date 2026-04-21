@@ -40,7 +40,6 @@ class CreatePaymentIntentView(APIView):
             stripe_payment_intent_id=intent['id'],
             amount=booking.total_price,
         )
-
         return Response({
             'client_secret': intent['client_secret'],
             'publishable_key': settings.STRIPE_PUBLISHABLE_KEY
