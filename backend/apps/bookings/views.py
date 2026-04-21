@@ -12,6 +12,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from .tasks import cancel_pending_booking
+from apps.ads.tasks import schedule_ad_display
 
 from .models import Booking
 from .serializers import (
@@ -47,7 +49,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return BookingCreateSerializer
         return BookingDetailSerializer
-
+   
     def create(self, request, *args, **kwargs):
         """
         POST /api/v1/bookings/
@@ -59,19 +61,24 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         try:
             booking = serializer.save()
-        except ValidationError as e:
-            # Conflict detection raises ValidationError — convert to 409
-            return Response(
-                 {"detail": e.messages[0] if e.messages else str(e)},
-        status=status.HTTP_409_CONFLICT
+            
+            # Cancel booking if payment not completed in 15 minutes
+            cancel_pending_booking.apply_async(
+                args=[booking.id],
+                countdown=60 * 15
+            )
+            
+            # Schedule ad display at booking start time
+            schedule_ad_display.apply_async(
+                args=[booking.id],
+                eta=booking.start_time,
             )
 
-        # Schedule the Celery task to push the ad at the right time
-        from apps.ads.tasks import schedule_ad_display
-        schedule_ad_display.apply_async(
-            args=[booking.id],
-            eta=booking.start_time,
-        )
+        except ValidationError as e:
+            return Response(
+                {"detail": e.messages[0] if e.messages else str(e)},
+                status=status.HTTP_409_CONFLICT
+            )
 
         return Response(
             BookingDetailSerializer(booking, context={"request": request}).data,

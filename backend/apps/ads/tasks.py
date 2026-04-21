@@ -122,3 +122,4 @@ def clear_board_screen(booking_id: int):
     Booking.objects.filter(id=booking.id).update(status=Booking.Status.COMPLETED)
 
     logger.info(f"Booking #{booking_id} completed. Board #{booking.board_id} cleared.")
+
