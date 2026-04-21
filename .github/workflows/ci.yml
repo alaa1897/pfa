@@ -3,7 +3,8 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - feature/payment
+      - feature/*
+      - fix/*
   pull_request:
     branches:
       - main
@@ -70,4 +71,4 @@ jobs:
         run: |
           cd backend
           python manage.py migrate
-          python manage.py test apps.payments
+          python manage.py test 
