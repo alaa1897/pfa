@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    image: 421848569037.dkr.ecr.us-east-1.amazonaws.com/dooh-backend:latest
+    restart: always
+    env_file: .env.aws
+    depends_on:
+      - celery
+
+  celery:
+    image: 421848569037.dkr.ecr.us-east-1.amazonaws.com/dooh-backend:latest
+    restart: always
+    command: celery -A config worker --loglevel=info
+    env_file: .env.aws
+
+  frontend:
+    image: 421848569037.dkr.ecr.us-east-1.amazonaws.com/dooh-frontend:latest
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
