@@ -35,6 +35,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "channels",
     "django_filters",
+    "storages",
 ]
 
 LOCAL_APPS = [
@@ -172,6 +173,15 @@ CELERY_TASK_TRACK_STARTED = True
 # ─── Media Files (Uploaded Ads) ───────────────────────────────────────────────
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# ─── S3 Storage (AWS) ─────────────────────────────────────────────────────────
+if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_DEFAULT_ACL = None
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
 
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')

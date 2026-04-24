@@ -37,3 +37,10 @@ k8s/secrets-production.yaml
 
 .env.development
 .env.production
+
+# Terraform
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+.env.aws
