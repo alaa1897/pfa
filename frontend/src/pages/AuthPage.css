@@ -1,20 +1,64 @@
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  padding: 2rem 1rem;
-}
-.auth-card       { width: 100%; max-width: 420px; }
-.auth-card-wide  { max-width: 560px; }
-.auth-header     { text-align: center; padding: 2rem 2rem 0; }
-.auth-logo       { display: flex; align-items: center; justify-content: center;
-                   gap: .5rem; color: var(--primary); font-size: 1.1rem;
-                   font-weight: 600; margin-bottom: 1.25rem; }
-.auth-header h1  { font-size: 1.5rem; margin-bottom: .25rem; }
-.auth-header p   { color: var(--text-muted); font-size: .9rem; }
-.auth-footer     { text-align: center; font-size: .875rem; color: var(--text-muted);
-                   margin-top: 1.25rem; }
-.auth-footer a   { color: var(--primary); text-decoration: none; font-weight: 500; }
-.form-row        { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+/* ── AuthPage.css ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+.ap-page { min-height:100vh; display:flex; flex-direction:column; background:#f8fafc; font-family:'DM Sans',sans-serif; }
+
+/* Nav */
+.ap-nav { height:52px; background:#fff; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; padding:0 24px; flex-shrink:0; }
+.ap-logo { display:flex; align-items:center; gap:7px; font-family:'Syne',sans-serif; font-size:14px; font-weight:800; color:#0f172a; text-decoration:none; }
+.ap-logo-dot { width:7px; height:7px; border-radius:50%; background:#2563eb; flex-shrink:0; }
+.ap-logo-muted { font-family:'DM Sans',sans-serif; font-weight:400; color:#94a3b8; }
+.ap-home-btn { font-size:12px; color:#64748b; background:transparent; border:0.5px solid #e2e8f0; border-radius:7px; padding:5px 12px; text-decoration:none; cursor:pointer; }
+.ap-home-btn:hover { background:#f1f5f9; color:#0f172a; }
+
+/* Body layout */
+.ap-body { flex:1; display:flex; }
+
+/* Robot panel */
+.ap-panel { width:250px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 16px; position:relative; overflow:hidden; animation:slideInLeft .55s cubic-bezier(.34,1.4,.64,1) both; }
+.ap-panel-blue  { background:#eff6ff; border-right:1px solid #dbeafe; }
+.ap-panel-green { background:#f0fdf4; border-right:1px solid #bbf7d0; }
+
+@keyframes slideInLeft { from{opacity:0;transform:translateX(-36px)} to{opacity:1;transform:translateX(0)} }
+
+.ap-panel-msg { background:#fff; border-radius:10px; padding:10px 13px; text-align:center; margin-top:14px; max-width:196px; }
+.ap-msg-blue  { border:0.5px solid #dbeafe; }
+.ap-msg-green { border:0.5px solid #bbf7d0; }
+.ap-panel-msg strong { display:block; font-family:'Syne',sans-serif; font-size:12px; font-weight:800; color:#0f172a; margin-bottom:3px; }
+.ap-panel-msg span   { font-size:10px; color:#64748b; line-height:1.4; }
+
+/* Form panel */
+.ap-form-panel { flex:1; display:flex; align-items:center; justify-content:center; padding:28px 20px; }
+
+.ap-card { background:#fff; border:0.5px solid #e2e8f0; border-radius:14px; padding:24px; width:100%; max-width:340px; box-shadow:0 4px 20px rgba(0,0,0,.05); }
+
+.ap-heading { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:#0f172a; margin-bottom:3px; }
+.ap-sub      { font-size:11px; color:#94a3b8; margin-bottom:16px; }
+
+.ap-field { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
+.ap-field label { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; }
+.ap-field input { background:#f1f5f9; border:0.5px solid #e2e8f0; border-radius:7px; padding:8px 11px; color:#334155; font-size:12.5px; outline:none; width:100%; font-family:'DM Sans',sans-serif; transition:border-color .15s; }
+.ap-field input::placeholder { color:#94a3b8; }
+.ap-field input:focus { border-color:#93c5fd; background:#fff; }
+
+.ap-row { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+
+/* Green submit button — always fully visible, never hover-reveal */
+.ap-btn-green { display:flex; align-items:center; justify-content:center; width:100%; background-color:#059669; color:#ffffff; border:none; border-radius:8px; padding:11px 14px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:700; cursor:pointer; margin-top:6px; line-height:1; }
+.ap-btn-green:hover:not(:disabled) { background-color:#047857; }
+.ap-btn-green:disabled { opacity:.6; cursor:not-allowed; }
+
+.ap-switch { text-align:center; font-size:11px; color:#94a3b8; margin-top:12px; }
+.ap-switch span { color:#2563eb; cursor:pointer; font-weight:500; }
+.ap-switch span:hover { text-decoration:underline; }
+
+/* Shared robot animations */
+@keyframes bodyBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes headWiggle { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-8deg)} 40%{transform:rotate(6deg)} 60%{transform:rotate(-5deg)} 80%{transform:rotate(4deg)} }
+@keyframes eyeLookLeft { 0%,15%,100%{transform:translateX(0)} 20%,35%{transform:translateX(-3px)} 40%,55%{transform:translateX(3px)} 60%,75%{transform:translateX(-2px)} }
+@keyframes blink { 0%,92%,100%{transform:scaleY(1)} 95%{transform:scaleY(.05)} }
+@keyframes doubleBlink { 0%,78%,84%,90%,100%{transform:scaleY(1)} 80%,86%{transform:scaleY(.05)} }
+@keyframes antennaPulse { 0%,100%{r:5;opacity:.9} 50%{r:7;opacity:1} }
+@keyframes armWave { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-20deg)} 75%{transform:rotate(15deg)} }
+@keyframes raisedArmBounce { 0%,100%{transform:translateY(0) rotate(0)} 30%{transform:translateY(-5px) rotate(-10deg)} 60%{transform:translateY(-2px) rotate(5deg)} }
+@keyframes confettiSpin { 0%{transform:rotate(0deg) translateY(0)} 100%{transform:rotate(360deg) translateY(-8px)} }
