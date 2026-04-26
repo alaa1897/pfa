@@ -1,14 +1,7 @@
 /**
- * Auth Store (Zustand)
- * --------------------
- * Zustand is a minimal state management library.
- * This store holds authentication state and persists tokens to localStorage.
- *
- * Why Zustand over Redux?
- *   Much simpler API — no actions, reducers, or boilerplate.
- *   Perfect for a project this size.
+ * authStore.js — Zustand auth store
+ * Adds registerAndLogin() so sign-up auto-logs the user in immediately.
  */
-
 import { create } from "zustand";
 import { authAPI } from "../services/api";
 
@@ -18,21 +11,14 @@ const useAuthStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
       const { data } = await authAPI.login(email, password);
-
-      // Store tokens in localStorage so they survive page refreshes
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
-
-      // Fetch the user profile immediately after login
       const profileRes = await authAPI.getProfile();
       set({ user: profileRes.data, isAuthenticated: true, isLoading: false });
-
       return { success: true };
     } catch (error) {
       const message = error.response?.data?.detail || "Login failed.";
@@ -46,6 +32,26 @@ const useAuthStore = create((set, get) => ({
     try {
       await authAPI.register(formData);
       set({ isLoading: false });
+      return { success: true };
+    } catch (error) {
+      const message =
+        Object.values(error.response?.data || {}).flat().join(" ") ||
+        "Registration failed.";
+      set({ error: message, isLoading: false });
+      return { success: false, error: message };
+    }
+  },
+
+  // Register + immediately log in — no redirect to /login needed
+  registerAndLogin: async (formData) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authAPI.register(formData);
+      const { data } = await authAPI.login(formData.email, formData.password);
+      localStorage.setItem("access_token", data.access);
+      localStorage.setItem("refresh_token", data.refresh);
+      const profileRes = await authAPI.getProfile();
+      set({ user: profileRes.data, isAuthenticated: true, isLoading: false });
       return { success: true };
     } catch (error) {
       const message =

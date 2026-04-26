@@ -1,32 +1,31 @@
 /**
- * App.js – Root component with all routes defined
+ * App.js — Root component with all routes
  *
  * Route structure:
- *   /login              → Login page (public)
- *   /register           → Register page (public)
- *   /                   → Map page — browse boards (protected)
- *   /board/:id/book     → Booking flow for a specific board (protected)
- *   /my-bookings        → User's booking history (protected)
- *   /simulator/:id      → Board simulator — fullscreen ad display (public)
- *   /admin/*            → Admin dashboard (admin only)
+ *   /           → LandingPage   (public only — redirects to /map if logged in)
+ *   /login      → AuthPage      (public only)
+ *   /register   → AuthPage      (public only)
+ *   /map        → MapPage       (protected — was /)
+ *   /board/:id/book → BookingPage (protected)
+ *   /my-bookings    → MyBookingsPage (protected)
+ *   /simulator/:id  → SimulatorPage (public)
+ *   /admin          → AdminPage (admin only)
  */
-
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import useAuthStore from "./store/authStore";
 
 // Pages
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import MapPage from "./pages/MapPage";
-import BookingPage from "./pages/BookingPage";
+import LandingPage    from "./pages/LandingPage";
+import AuthPage       from "./pages/AuthPage";
+import MapPage        from "./pages/MapPage";
+import BookingPage    from "./pages/BookingPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
-import SimulatorPage from "./pages/SimulatorPage";
-import AdminPage from "./pages/AdminPage";
+import SimulatorPage  from "./pages/SimulatorPage";
+import AdminPage      from "./pages/AdminPage";
 
 // ── Route Guards ──────────────────────────────────────────────────────────────
-
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -35,56 +34,61 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const user = useAuthStore((s) => s.user);
   if (!user) return null;
-  return user.role === "admin" ? children : <Navigate to="/" replace />;
+  return user.role === "admin" ? children : <Navigate to="/map" replace />;
 }
 
 function PublicOnlyRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return !isAuthenticated ? children : <Navigate to="/" replace />;
+  return !isAuthenticated ? children : <Navigate to="/map" replace />;
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
-
+// ── App ────────────────────────────────────────────────────────────────────────
 export default function App() {
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  // On first load, fetch the user's profile if already logged in
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchProfile();
-    }
+    if (isAuthenticated) fetchProfile();
   }, []);
 
   return (
     <BrowserRouter>
-      {/* Global toast notifications (success, error, info) */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: { fontSize: "14px" },
-        }}
-      />
-
+      <Toaster position="top-right" />
       <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
-        <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+        {/* Public landing — redirects to /map if logged in */}
+        <Route path="/" element={
+          <PublicOnlyRoute><LandingPage /></PublicOnlyRoute>
+        }/>
 
-        {/* Board simulator — public so the "screen" can connect without auth */}
-        <Route path="/simulator/:boardId" element={<SimulatorPage />} />
+        {/* Auth — public only */}
+        <Route path="/login" element={
+          <PublicOnlyRoute><AuthPage initialMode="login" /></PublicOnlyRoute>
+        }/>
+        <Route path="/register" element={
+          <PublicOnlyRoute><AuthPage initialMode="register" /></PublicOnlyRoute>
+        }/>
 
-        {/* Protected routes */}
-        <Route path="/" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-        <Route path="/board/:boardId/book" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
-        <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+        {/* Protected */}
+        <Route path="/map" element={
+          <ProtectedRoute><MapPage /></ProtectedRoute>
+        }/>
+        <Route path="/board/:boardId/book" element={
+          <ProtectedRoute><BookingPage /></ProtectedRoute>
+        }/>
+        <Route path="/my-bookings" element={
+          <ProtectedRoute><MyBookingsPage /></ProtectedRoute>
+        }/>
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>} />
+        {/* Simulator — public (boards run on their own screens) */}
+        <Route path="/simulator/:boardId" element={<SimulatorPage />}/>
+
+        {/* Admin only */}
+        <Route path="/admin" element={
+          <ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>
+        }/>
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />}/>
       </Routes>
     </BrowserRouter>
   );
