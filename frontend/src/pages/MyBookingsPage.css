@@ -1,46 +1,88 @@
-.bookings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+/* ── MyBookingsPage.css ───────────────────────────────────────────────────── */
 
-.booking-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: .75rem;
-}
+.bookings-list { display:flex; flex-direction:column; gap:.75rem; }
 
-.booking-card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: .4rem;
-  margin-bottom: 1rem;
+/* Pending banner */
+.pending-banner {
+  display:flex; align-items:flex-start; gap:.75rem;
+  background:#fffbeb; border:1px solid rgba(245,158,11,.3);
+  border-left:3px solid #f59e0b;
+  border-radius:var(--radius); padding:.75rem 1rem;
+  margin-bottom:1rem; color:#92400e;
 }
+.pending-banner strong { display:block; font-size:.9rem; margin-bottom:.2rem; }
+.pending-banner p      { font-size:.825rem; opacity:.85; }
 
-.booking-card-meta .meta-item {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-size: .875rem;
-  color: var(--text-muted);
+/* Booking card */
+.bk-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  overflow:hidden; transition:box-shadow .15s;
 }
+.bk-card:hover { box-shadow:var(--shadow-md); }
+.bk-card.pending   { border-left:3px solid #f59e0b; }
+.bk-card.confirmed { border-left:3px solid #16a34a; }
+.bk-card.cancelled { border-left:3px solid #dc2626; opacity:.7; }
 
-.booking-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: .75rem;
-  border-top: 1px solid var(--border);
-}
+.bk-card-body { padding:1rem 1.1rem; }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 4rem 2rem;
-  text-align: center;
-  color: var(--text-muted);
+.bk-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.5rem; }
+.bk-card-header h3 { font-size:1rem; font-weight:600; margin-bottom:.15rem; }
+.bk-city { font-size:.825rem; color:var(--text-muted); }
+
+.bk-header-right { display:flex; align-items:center; gap:.5rem; }
+
+/* Countdown */
+.bk-countdown {
+  font-size:.8rem; font-weight:700; font-variant-numeric:tabular-nums;
+  background:rgba(245,158,11,.1); color:#92400e;
+  border:0.5px solid rgba(245,158,11,.3);
+  padding:2px 8px; border-radius:99px;
 }
-.empty-state h2 { color: var(--text); }
+.bk-countdown.urgent {
+  background:rgba(220,38,38,.08); color:#b91c1c;
+  border-color:rgba(220,38,38,.3);
+  animation:countdownPulse 1s ease-in-out infinite;
+}
+@keyframes countdownPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* Meta row */
+.bk-meta { display:flex; flex-wrap:wrap; gap:.5rem 1.25rem; font-size:.85rem; color:var(--text-muted); margin-bottom:.6rem; }
+.bk-meta span { display:flex; align-items:center; gap:.35rem; }
+
+/* Pending bar */
+.bk-pending-bar {
+  font-size:.8rem; background:#fffbeb; color:#92400e;
+  border:0.5px solid rgba(245,158,11,.25); border-radius:5px;
+  padding:4px 10px; margin-bottom:.6rem;
+}
+.bk-pending-bar.expired { background:rgba(220,38,38,.06); color:#b91c1c; border-color:rgba(220,38,38,.2); }
+
+/* Footer */
+.bk-card-footer { display:flex; justify-content:space-between; align-items:center; padding-top:.6rem; border-top:1px solid var(--border); }
+.bk-price { font-size:1rem; font-weight:700; color:var(--primary); }
+.bk-actions { display:flex; gap:.5rem; }
+
+/* Inline payment form */
+.bk-pay-form {
+  border-top:1px solid var(--border);
+  padding:.9rem 1.1rem;
+  background:var(--bg);
+  animation:slideDown .22s ease;
+}
+@keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.bk-pay-label { font-size:.875rem; margin-bottom:.6rem; }
+.bk-pay-label strong { font-weight:600; }
+.bk-card-mock {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:.6rem .875rem;
+  font-size:.9rem; color:var(--text-muted);
+  letter-spacing:.04em; margin-bottom:.6rem;
+  font-family:monospace;
+}
+.bk-pay-btn { margin-top:.25rem; }
+
+/* Badge overrides for booking statuses */
+.badge-pending   { background:rgba(245,158,11,.12); color:#92400e; border:0.5px solid rgba(245,158,11,.3); }
+.badge-confirmed { background:rgba(22,163,74,.12);  color:#166534; border:0.5px solid rgba(22,163,74,.3);  }
+.badge-cancelled { background:rgba(220,38,38,.1);   color:#991b1b; border:0.5px solid rgba(220,38,38,.25); }
