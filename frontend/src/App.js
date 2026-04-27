@@ -1,11 +1,11 @@
 /**
- * App.js — Root component with all routes
+ * App.js – Root component with all routes
  *
  * Route structure:
- *   /           → LandingPage   (public only — redirects to /map if logged in)
- *   /login      → AuthPage      (public only)
- *   /register   → AuthPage      (public only)
- *   /map        → MapPage       (protected — was /)
+ *   /               → LandingPage (public only)
+ *   /login          → AuthPage login mode (public only)
+ *   /register       → AuthPage register mode (public only)
+ *   /map            → MapPage (protected)
  *   /board/:id/book → BookingPage (protected)
  *   /my-bookings    → MyBookingsPage (protected)
  *   /simulator/:id  → SimulatorPage (public)
@@ -13,7 +13,6 @@
  */
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
 import useAuthStore from "./store/authStore";
 
 // Pages
@@ -25,7 +24,10 @@ import MyBookingsPage from "./pages/MyBookingsPage";
 import SimulatorPage  from "./pages/SimulatorPage";
 import AdminPage      from "./pages/AdminPage";
 
-// ── Route Guards ──────────────────────────────────────────────────────────────
+// Global robot notification — replaces react-hot-toast entirely
+import RobotNotification from "./components/Common/RobotNotification";
+
+// ── Route guards ──────────────────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -42,9 +44,9 @@ function PublicOnlyRoute({ children }) {
   return !isAuthenticated ? children : <Navigate to="/map" replace />;
 }
 
-// ── App ────────────────────────────────────────────────────────────────────────
+// ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const fetchProfile    = useAuthStore((s) => s.fetchProfile);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
@@ -53,22 +55,19 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      {/* Robot notification — mounted once, visible globally */}
+      <RobotNotification />
+
       <Routes>
-        {/* Public landing — redirects to /map if logged in */}
         <Route path="/" element={
           <PublicOnlyRoute><LandingPage /></PublicOnlyRoute>
         }/>
-
-        {/* Auth — public only */}
         <Route path="/login" element={
           <PublicOnlyRoute><AuthPage initialMode="login" /></PublicOnlyRoute>
         }/>
         <Route path="/register" element={
           <PublicOnlyRoute><AuthPage initialMode="register" /></PublicOnlyRoute>
         }/>
-
-        {/* Protected */}
         <Route path="/map" element={
           <ProtectedRoute><MapPage /></ProtectedRoute>
         }/>
@@ -78,16 +77,12 @@ export default function App() {
         <Route path="/my-bookings" element={
           <ProtectedRoute><MyBookingsPage /></ProtectedRoute>
         }/>
-
-        {/* Simulator — public (boards run on their own screens) */}
         <Route path="/simulator/:boardId" element={<SimulatorPage />}/>
-
-        {/* Admin only */}
         <Route path="/admin" element={
-          <ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>
+          <ProtectedRoute>
+            <AdminRoute><AdminPage /></AdminRoute>
+          </ProtectedRoute>
         }/>
-
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />}/>
       </Routes>
     </BrowserRouter>

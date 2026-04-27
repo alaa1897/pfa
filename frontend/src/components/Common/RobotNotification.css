@@ -1,0 +1,130 @@
+/* ── RobotNotification.css ───────────────────────────────────────────────── */
+
+.rn-wrap {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  transform: translateY(120px);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1),
+              opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.rn-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: all;
+}
+
+.rn-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px 14px 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  min-width: 260px;
+  max-width: 320px;
+  border-left: 4px solid #e2e8f0;
+  position: relative;
+}
+
+/* Border color per state */
+.rn-success     { border-left-color: #10b981; }
+.rn-error       { border-left-color: #ef4444; }
+.rn-warning     { border-left-color: #f59e0b; }
+.rn-info        { border-left-color: #2563eb; }
+.rn-celebrating { border-left-color: #10b981; }
+
+.rn-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.rn-close:hover { background: #f1f5f9; color: #64748b; }
+
+.rn-robot {
+  flex-shrink: 0;
+  width: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.rn-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rn-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rn-message {
+  font-size: 12.5px;
+  color: #334155;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* ── Robot keyframe animations ── */
+@keyframes bodyBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+@keyframes headWiggle {
+  0%, 100% { transform: rotate(0); }
+  20%       { transform: rotate(-7deg); }
+  40%       { transform: rotate(5deg); }
+  60%       { transform: rotate(-4deg); }
+  80%       { transform: rotate(3deg); }
+}
+@keyframes eyeLookLeft {
+  0%, 15%, 100% { transform: translateX(0); }
+  20%, 35%      { transform: translateX(-2px); }
+  40%, 55%      { transform: translateX(2px); }
+  60%, 75%      { transform: translateX(-1px); }
+}
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.05); }
+}
+@keyframes doubleBlink {
+  0%, 78%, 84%, 90%, 100% { transform: scaleY(1); }
+  80%, 86%                 { transform: scaleY(0.05); }
+}
+@keyframes antennaPulse {
+  0%, 100% { r: 5; opacity: 0.9; }
+  50%       { r: 7; opacity: 1; }
+}
+@keyframes armWave {
+  0%, 100% { transform: rotate(0); }
+  25%       { transform: rotate(-20deg); }
+  75%       { transform: rotate(15deg); }
+}
+@keyframes raisedArmBounce {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30%       { transform: translateY(-5px) rotate(-10deg); }
+  60%       { transform: translateY(-2px) rotate(5deg); }
+}
+@keyframes confettiSpin {
+  0%   { transform: rotate(0deg) translateY(0); }
+  100% { transform: rotate(360deg) translateY(-8px); }
+}
