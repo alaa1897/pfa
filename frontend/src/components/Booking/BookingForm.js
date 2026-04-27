@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import { format, addDays } from "date-fns";
-import toast from "react-hot-toast";
+import useRobotStore from "../../store/useRobotStore";
 import { useDropzone } from "react-dropzone";
 import { Upload, Clock, Calendar, CheckCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import { bookingsAPI, adsAPI } from "../../services/api";
@@ -13,6 +13,7 @@ const STEPS = ["Date", "Time Slots", "Upload Ad", "Confirm", "Payment"];
 
 export default function BookingForm({ board }) {
   const navigate = useNavigate();
+  const { notify } = useRobotStore();
 
   const [step, setStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState(addDays(new Date(), 1));
@@ -32,7 +33,7 @@ export default function BookingForm({ board }) {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       bookingsAPI.getAvailability(board.id, dateStr)
         .then(({ data }) => setSlots(data))
-        .catch(() => toast.error("Failed to load availability."))
+        .catch(() => notify("error", "Failed to load availability. Please try again."))
         .finally(() => setSlotsLoading(false));
     }
   }, [step, selectedDate, board.id]);
@@ -51,7 +52,7 @@ export default function BookingForm({ board }) {
     maxSize: 50 * 1024 * 1024,
     onDrop: (accepted, rejected) => {
       if (rejected.length) {
-        toast.error("File too large or unsupported format. Max 50 MB.");
+        notify("error", "File too large or unsupported format. Allowed: JPG, PNG, GIF, MP4, WEBM · Max 50 MB.");
         return;
       }
       setAdFile(accepted[0]);
@@ -85,18 +86,19 @@ export default function BookingForm({ board }) {
       await adsAPI.uploadAd(formData);
 
       setBookingResult(booking);
+      notify("success", "Booking created! Complete your payment to confirm your slot.");
       setStep(4); // Go to payment step
 
     } catch (error) {
       const detail = error.response?.data?.detail || "Booking failed. Please try again.";
-      toast.error(detail);
+      notify("error", detail);
     } finally {
       setLoading(false);
     }
   };
 
   const handlePaymentSuccess = () => {
-    toast.success("Payment successful! Your ad is scheduled.");
+    notify("celebrating", "Payment confirmed! Your ad is scheduled and will go live on time.");
     setStep(5); // Go to success screen
   };
 

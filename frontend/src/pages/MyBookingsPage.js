@@ -1,40 +1,33 @@
 /**
  * MyBookingsPage.js
- * Shows user bookings with:
- *   - Pending payment banner
- *   - Live countdown timer per pending booking (15 min from creation)
- *   - Inline Stripe payment form (expands inside the card)
- *   - Upload Ad button for bookings missing an ad
- *   - Exact API error messages shown to the user
+ * Uses robot notifications instead of toast for all user feedback.
  */
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, differenceInSeconds, addMinutes, parseISO } from "date-fns";
 import { RefreshCw, Calendar, Monitor, AlertCircle, Upload } from "lucide-react";
-import { toast } from "react-hot-toast";
 import Navbar from "../components/Common/Navbar";
 import { bookingsAPI, adsAPI } from "../services/api";
+import useRobotStore from "../store/useRobotStore";
 import "./MyBookingsPage.css";
 
 const PAYMENT_WINDOW_MINUTES = 15;
 
-// ── Countdown hook ───────────────────────────────────────────────────────────
+// ── Countdown hook ────────────────────────────────────────────────────────────
 function useCountdown(createdAt) {
   const deadline = addMinutes(parseISO(createdAt), PAYMENT_WINDOW_MINUTES);
   const calc = () => Math.max(0, differenceInSeconds(deadline, new Date()));
   const [secs, setSecs] = useState(calc);
-
   useEffect(() => {
     const id = setInterval(() => setSecs(calc()), 1000);
     return () => clearInterval(id);
   }, [createdAt]);
-
   const mm = String(Math.floor(secs / 60)).padStart(2, "0");
   const ss = String(secs % 60).padStart(2, "0");
   return { display: `${mm}:${ss}`, expired: secs === 0, urgent: secs < 180 };
 }
 
-// ── Booking card ─────────────────────────────────────────────────────────────
+// ── Booking card ──────────────────────────────────────────────────────────────
 function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
   const [payOpen, setPayOpen]       = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -43,27 +36,28 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
   const [paid, setPaid]             = useState(false);
   const [hasAd, setHasAd]           = useState(booking.has_ad);
   const fileInputRef                = useRef();
-  const countdown = useCountdown(booking.created_at);
-  const isPending = booking.status === "pending" && !paid;
+  const { notify }                  = useRobotStore();
+  const countdown  = useCountdown(booking.created_at);
+  const isPending  = booking.status === "pending" && !paid;
   const statusClass = paid ? "confirmed" : booking.status;
 
-  // ── Payment ────────────────────────────────────────────────────────────────
+  // ── Payment ─────────────────────────────────────────────────────────────────
   const handlePay = async () => {
     setPaying(true);
     try {
       await new Promise((r) => setTimeout(r, 1200));
       setPaid(true);
       setPayOpen(false);
-      toast.success("Payment confirmed!");
+      notify("celebrating", "Payment confirmed! Your ad will display on schedule. 🎉");
       onPaid(booking.id);
     } catch {
-      toast.error("Payment failed. Please try again.");
+      notify("error", "Payment didn't go through. Please check your card details and try again.");
     } finally {
       setPaying(false);
     }
   };
 
-  // ── Ad upload ──────────────────────────────────────────────────────────────
+  // ── Ad upload ────────────────────────────────────────────────────────────────
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -78,27 +72,24 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
       await adsAPI.uploadAd(formData);
       setHasAd(true);
       setUploadOpen(false);
-      toast.success("Ad uploaded successfully!");
+      notify("success", "Ad uploaded successfully! Complete your payment to confirm the booking.");
       onAdUploaded(booking.id);
     } catch (err) {
-      // Show the exact error from the API
       const data = err.response?.data;
       if (data) {
-        // data can be { file: ["..."], booking: ["..."] } or { detail: "..." }
         const messages = Object.entries(data)
           .map(([field, errors]) => {
-            const fieldLabel = field === "detail" ? "" : `${field}: `;
-            const errorText = Array.isArray(errors) ? errors.join(", ") : errors;
-            return `${fieldLabel}${errorText}`;
+            const label = field === "detail" ? "" : `${field}: `;
+            const text  = Array.isArray(errors) ? errors.join(", ") : errors;
+            return `${label}${text}`;
           })
           .join("\n");
-        toast.error(messages, { duration: 6000 });
+        notify("error", messages);
       } else {
-        toast.error("Upload failed. Please try again.");
+        notify("error", "Upload failed. Please try again.");
       }
     } finally {
       setUploading(false);
-      // Reset file input so the same file can be re-selected after fixing
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -143,7 +134,7 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
           </div>
         )}
 
-        {/* Pending payment reminder */}
+        {/* Pending reminder */}
         {isPending && !countdown.expired && (
           <div className="bk-pending-bar">
             ⏱ Pay within {countdown.display} or booking will be cancelled
@@ -157,34 +148,22 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
         <div className="bk-card-footer">
           <strong className="bk-price">{booking.total_price} TND</strong>
           <div className="bk-actions">
-
-            {/* Payment button */}
             {isPending && !countdown.expired && (
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => { setPayOpen((o) => !o); setUploadOpen(false); }}
-              >
+              <button className="btn btn-primary btn-sm"
+                onClick={() => { setPayOpen((o) => !o); setUploadOpen(false); }}>
                 💳 {payOpen ? "Hide" : "Complete Payment"}
               </button>
             )}
-
-            {/* Upload ad button — shown when no ad yet and not cancelled */}
             {!hasAd && booking.status !== "cancelled" && (
-              <button
-                className="btn btn-secondary btn-sm"
+              <button className="btn btn-secondary btn-sm"
                 onClick={() => { setUploadOpen((o) => !o); setPayOpen(false); }}
-                disabled={uploading}
-              >
+                disabled={uploading}>
                 <Upload size={13}/> {uploading ? "Uploading…" : uploadOpen ? "Hide" : "Upload Ad"}
               </button>
             )}
-
-            {/* Cancel button */}
             {booking.is_cancellable && !paid && (
-              <button
-                className="btn btn-danger btn-sm"
-                onClick={() => onCancel(booking.id)}
-              >
+              <button className="btn btn-danger btn-sm"
+                onClick={() => onCancel(booking.id)}>
                 Cancel
               </button>
             )}
@@ -200,28 +179,21 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
             {booking.board_detail?.name}
           </p>
           <div className="bk-card-mock">4242 4242 4242 4242 &nbsp; 12/26 &nbsp; 123</div>
-          <button
-            className="btn btn-primary btn-block bk-pay-btn"
-            onClick={handlePay}
-            disabled={paying}
-          >
+          <button className="btn btn-primary btn-block bk-pay-btn"
+            onClick={handlePay} disabled={paying}>
             {paying ? "Processing…" : `Pay ${booking.total_price} TND →`}
           </button>
         </div>
       )}
 
-      {/* Inline ad upload form */}
+      {/* Inline upload form */}
       {uploadOpen && (
         <div className="bk-upload-form">
-          <p className="bk-upload-label">
-            <strong>Upload your ad creative</strong>
-          </p>
+          <p className="bk-upload-label"><strong>Upload your ad creative</strong></p>
           <p className="bk-upload-hint">
-            Allowed formats: JPG, JPEG, PNG, GIF, MP4, WEBM · Max size: 50 MB
+            Allowed: JPG, JPEG, PNG, GIF, MP4, WEBM · Max size: 50 MB
           </p>
-          <input
-            ref={fileInputRef}
-            type="file"
+          <input ref={fileInputRef} type="file"
             accept=".jpg,.jpeg,.png,.gif,.mp4,.webm"
             onChange={handleFileChange}
             className="bk-file-input"
@@ -234,9 +206,10 @@ function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function MyBookingsPage() {
-  const navigate = useNavigate();
+  const navigate   = useNavigate();
+  const { notify } = useRobotStore();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading]   = useState(true);
 
@@ -244,13 +217,13 @@ export default function MyBookingsPage() {
     setLoading(true);
     bookingsAPI.getMyBookings()
       .then(({ data }) => setBookings(data.results || data))
-      .catch(() => toast.error("Could not load bookings."))
+      .catch(() => notify("error", "Could not load your bookings. Please refresh."))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchBookings(); }, []);
 
-  const handlePaid      = (id) => setBookings((b) =>
+  const handlePaid       = (id) => setBookings((b) =>
     b.map((bk) => bk.id === id ? { ...bk, status: "confirmed" } : bk));
 
   const handleAdUploaded = (id) => setBookings((b) =>
@@ -259,14 +232,14 @@ export default function MyBookingsPage() {
   const handleCancel = async (id) => {
     try {
       await bookingsAPI.cancelBooking(id);
-      toast.success("Booking cancelled.");
+      notify("info", "Booking cancelled successfully.");
       fetchBookings();
     } catch {
-      toast.error("Could not cancel this booking.");
+      notify("error", "Could not cancel this booking. Please try again.");
     }
   };
 
-  const pendingCount  = bookings.filter((b) => b.status === "pending").length;
+  const pendingCount   = bookings.filter((b) => b.status === "pending").length;
   const missingAdCount = bookings.filter(
     (b) => !b.has_ad && b.status !== "cancelled"
   ).length;
@@ -276,15 +249,14 @@ export default function MyBookingsPage() {
       <Navbar />
       <div className="container" style={{ paddingTop: "2rem", paddingBottom: "2rem" }}>
 
-        {/* Header */}
-        <div className="flex justify-between items-center" style={{ marginBottom: "1.25rem" }}>
+        <div className="flex justify-between items-center"
+          style={{ marginBottom: "1.25rem" }}>
           <h1>My Bookings</h1>
           <button className="btn btn-ghost btn-sm" onClick={fetchBookings}>
             <RefreshCw size={15}/> Refresh
           </button>
         </div>
 
-        {/* Pending payment banner */}
         {pendingCount > 0 && (
           <div className="pending-banner">
             <AlertCircle size={16}/>
@@ -295,7 +267,6 @@ export default function MyBookingsPage() {
           </div>
         )}
 
-        {/* Missing ad banner */}
         {missingAdCount > 0 && (
           <div className="warning-banner">
             <Upload size={16}/>
@@ -317,7 +288,8 @@ export default function MyBookingsPage() {
             <Calendar size={48} color="var(--text-muted)"/>
             <h2>No bookings yet</h2>
             <p>Browse the map and book your first digital board.</p>
-            <button className="btn btn-primary" onClick={() => navigate("/map")}>
+            <button className="btn btn-primary"
+              onClick={() => navigate("/map")}>
               Explore Boards
             </button>
           </div>
@@ -325,9 +297,7 @@ export default function MyBookingsPage() {
 
         <div className="bookings-list">
           {bookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
+            <BookingCard key={b.id} booking={b}
               onPaid={handlePaid}
               onCancel={handleCancel}
               onAdUploaded={handleAdUploaded}

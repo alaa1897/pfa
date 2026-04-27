@@ -11,13 +11,15 @@
  */
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { toast } from "react-hot-toast";
+
 import useAuthStore from "../store/authStore";
+import useRobotStore from "../store/useRobotStore";
 import "./AuthPage.css";
 
 export default function AuthPage({ initialMode = "login" }) {
   const navigate = useNavigate();
   const { login, registerAndLogin, isLoading } = useAuthStore();
+  const { notify } = useRobotStore();
   const [mode, setMode] = useState(initialMode);
 
   // ── Login state ──────────────────────────────────────────────────────────
@@ -31,7 +33,7 @@ export default function AuthPage({ initialMode = "login" }) {
     if (result.success) {
       navigate("/map");
     } else {
-      toast.error(result.error || "Login failed.");
+      notify("error", result.error || "Login failed. Please check your credentials.");
     }
   };
 
@@ -53,7 +55,7 @@ export default function AuthPage({ initialMode = "login" }) {
     if (result.success) {
       navigate("/map");
     } else {
-      toast.error(result.error || "Registration failed.");
+      notify("error", result.error || "Registration failed. Please check your details.");
     }
   };
 
