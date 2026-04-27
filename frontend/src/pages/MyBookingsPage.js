@@ -4,15 +4,16 @@
  *   - Pending payment banner
  *   - Live countdown timer per pending booking (15 min from creation)
  *   - Inline Stripe payment form (expands inside the card)
- *   - Card flips to confirmed after payment
+ *   - Upload Ad button for bookings missing an ad
+ *   - Exact API error messages shown to the user
  */
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, differenceInSeconds, addMinutes, parseISO } from "date-fns";
-import { RefreshCw, Calendar, Monitor, AlertCircle } from "lucide-react";
+import { RefreshCw, Calendar, Monitor, AlertCircle, Upload } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Navbar from "../components/Common/Navbar";
-import { bookingsAPI } from "../services/api";
+import { bookingsAPI, adsAPI } from "../services/api";
 import "./MyBookingsPage.css";
 
 const PAYMENT_WINDOW_MINUTES = 15;
@@ -34,17 +35,22 @@ function useCountdown(createdAt) {
 }
 
 // ── Booking card ─────────────────────────────────────────────────────────────
-function BookingCard({ booking, onPaid, onCancel }) {
-  const [payOpen, setPayOpen] = useState(false);
-  const [paying, setPaying]   = useState(false);
-  const [paid, setPaid]       = useState(false);
+function BookingCard({ booking, onPaid, onCancel, onAdUploaded }) {
+  const [payOpen, setPayOpen]       = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [paying, setPaying]         = useState(false);
+  const [uploading, setUploading]   = useState(false);
+  const [paid, setPaid]             = useState(false);
+  const [hasAd, setHasAd]           = useState(booking.has_ad);
+  const fileInputRef                = useRef();
   const countdown = useCountdown(booking.created_at);
   const isPending = booking.status === "pending" && !paid;
+  const statusClass = paid ? "confirmed" : booking.status;
 
+  // ── Payment ────────────────────────────────────────────────────────────────
   const handlePay = async () => {
     setPaying(true);
     try {
-      // Replace this stub with real Stripe.confirmCardPayment() call
       await new Promise((r) => setTimeout(r, 1200));
       setPaid(true);
       setPayOpen(false);
@@ -57,11 +63,50 @@ function BookingCard({ booking, onPaid, onCancel }) {
     }
   };
 
-  const statusClass = paid ? "confirmed" : booking.status;
+  // ── Ad upload ──────────────────────────────────────────────────────────────
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("booking", booking.id);
+    formData.append("file", file);
+    formData.append("title", file.name);
+
+    try {
+      await adsAPI.uploadAd(formData);
+      setHasAd(true);
+      setUploadOpen(false);
+      toast.success("Ad uploaded successfully!");
+      onAdUploaded(booking.id);
+    } catch (err) {
+      // Show the exact error from the API
+      const data = err.response?.data;
+      if (data) {
+        // data can be { file: ["..."], booking: ["..."] } or { detail: "..." }
+        const messages = Object.entries(data)
+          .map(([field, errors]) => {
+            const fieldLabel = field === "detail" ? "" : `${field}: `;
+            const errorText = Array.isArray(errors) ? errors.join(", ") : errors;
+            return `${fieldLabel}${errorText}`;
+          })
+          .join("\n");
+        toast.error(messages, { duration: 6000 });
+      } else {
+        toast.error("Upload failed. Please try again.");
+      }
+    } finally {
+      setUploading(false);
+      // Reset file input so the same file can be re-selected after fixing
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className={`bk-card ${statusClass}`}>
       <div className="bk-card-body">
+
         {/* Header */}
         <div className="bk-card-header">
           <div>
@@ -83,14 +128,22 @@ function BookingCard({ booking, onPaid, onCancel }) {
         {/* Meta */}
         <div className="bk-meta">
           <span><Calendar size={13}/> {format(parseISO(booking.start_time), "PPP")}</span>
-          <span><Monitor size={13}/>
+          <span>
+            <Monitor size={13}/>
             {format(parseISO(booking.start_time), "HH:mm")} –{" "}
             {format(parseISO(booking.end_time), "HH:mm")}
             {" "}· {booking.repeat_count}× repeat
           </span>
         </div>
 
-        {/* Pending reminder */}
+        {/* Missing ad warning */}
+        {!hasAd && booking.status !== "cancelled" && (
+          <div className="bk-warning-bar">
+            ⚠ No ad uploaded yet — upload your creative before the booking starts
+          </div>
+        )}
+
+        {/* Pending payment reminder */}
         {isPending && !countdown.expired && (
           <div className="bk-pending-bar">
             ⏱ Pay within {countdown.display} or booking will be cancelled
@@ -104,15 +157,34 @@ function BookingCard({ booking, onPaid, onCancel }) {
         <div className="bk-card-footer">
           <strong className="bk-price">{booking.total_price} TND</strong>
           <div className="bk-actions">
+
+            {/* Payment button */}
             {isPending && !countdown.expired && (
-              <button className="btn btn-primary btn-sm"
-                onClick={() => setPayOpen((o) => !o)}>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => { setPayOpen((o) => !o); setUploadOpen(false); }}
+              >
                 💳 {payOpen ? "Hide" : "Complete Payment"}
               </button>
             )}
+
+            {/* Upload ad button — shown when no ad yet and not cancelled */}
+            {!hasAd && booking.status !== "cancelled" && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => { setUploadOpen((o) => !o); setPayOpen(false); }}
+                disabled={uploading}
+              >
+                <Upload size={13}/> {uploading ? "Uploading…" : uploadOpen ? "Hide" : "Upload Ad"}
+              </button>
+            )}
+
+            {/* Cancel button */}
             {booking.is_cancellable && !paid && (
-              <button className="btn btn-danger btn-sm"
-                onClick={() => onCancel(booking.id)}>
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() => onCancel(booking.id)}
+              >
                 Cancel
               </button>
             )}
@@ -127,12 +199,35 @@ function BookingCard({ booking, onPaid, onCancel }) {
             <strong>Complete payment</strong> — {booking.total_price} TND ·{" "}
             {booking.board_detail?.name}
           </p>
-          {/* Stripe card element would mount here */}
           <div className="bk-card-mock">4242 4242 4242 4242 &nbsp; 12/26 &nbsp; 123</div>
-          <button className="btn btn-primary btn-block bk-pay-btn"
-            onClick={handlePay} disabled={paying}>
+          <button
+            className="btn btn-primary btn-block bk-pay-btn"
+            onClick={handlePay}
+            disabled={paying}
+          >
             {paying ? "Processing…" : `Pay ${booking.total_price} TND →`}
           </button>
+        </div>
+      )}
+
+      {/* Inline ad upload form */}
+      {uploadOpen && (
+        <div className="bk-upload-form">
+          <p className="bk-upload-label">
+            <strong>Upload your ad creative</strong>
+          </p>
+          <p className="bk-upload-hint">
+            Allowed formats: JPG, JPEG, PNG, GIF, MP4, WEBM · Max size: 50 MB
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.gif,.mp4,.webm"
+            onChange={handleFileChange}
+            className="bk-file-input"
+            disabled={uploading}
+          />
+          {uploading && <p className="bk-uploading-text">⏳ Uploading…</p>}
         </div>
       )}
     </div>
@@ -141,7 +236,7 @@ function BookingCard({ booking, onPaid, onCancel }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function MyBookingsPage() {
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading]   = useState(true);
 
@@ -155,10 +250,13 @@ export default function MyBookingsPage() {
 
   useEffect(() => { fetchBookings(); }, []);
 
-  const handlePaid    = (id) => setBookings((b) =>
+  const handlePaid      = (id) => setBookings((b) =>
     b.map((bk) => bk.id === id ? { ...bk, status: "confirmed" } : bk));
 
-  const handleCancel  = async (id) => {
+  const handleAdUploaded = (id) => setBookings((b) =>
+    b.map((bk) => bk.id === id ? { ...bk, has_ad: true } : bk));
+
+  const handleCancel = async (id) => {
     try {
       await bookingsAPI.cancelBooking(id);
       toast.success("Booking cancelled.");
@@ -168,7 +266,10 @@ export default function MyBookingsPage() {
     }
   };
 
-  const pendingCount = bookings.filter((b) => b.status === "pending").length;
+  const pendingCount  = bookings.filter((b) => b.status === "pending").length;
+  const missingAdCount = bookings.filter(
+    (b) => !b.has_ad && b.status !== "cancelled"
+  ).length;
 
   return (
     <div className="page">
@@ -183,7 +284,7 @@ export default function MyBookingsPage() {
           </button>
         </div>
 
-        {/* Pending banner */}
+        {/* Pending payment banner */}
         {pendingCount > 0 && (
           <div className="pending-banner">
             <AlertCircle size={16}/>
@@ -194,8 +295,19 @@ export default function MyBookingsPage() {
           </div>
         )}
 
+        {/* Missing ad banner */}
+        {missingAdCount > 0 && (
+          <div className="warning-banner">
+            <Upload size={16}/>
+            <div>
+              <strong>{missingAdCount} booking{missingAdCount > 1 ? "s" : ""} missing an ad</strong>
+              <p>Upload your creative before the booking start time.</p>
+            </div>
+          </div>
+        )}
+
         {loading && (
-          <div style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
             <div className="spinner"/> Loading…
           </div>
         )}
@@ -218,6 +330,7 @@ export default function MyBookingsPage() {
               booking={b}
               onPaid={handlePaid}
               onCancel={handleCancel}
+              onAdUploaded={handleAdUploaded}
             />
           ))}
         </div>

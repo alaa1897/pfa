@@ -9,16 +9,10 @@ from apps.boards.serializers import BoardMapSerializer
 
 
 class BookingCreateSerializer(serializers.ModelSerializer):
-    """
-    Used when creating a new booking.
-    The user is injected from the request — they cannot set it themselves.
-    """
-
+    # ... keep everything here but REMOVE get_has_ad from here
     class Meta:
         model = Booking
-        fields = [
-            "board", "start_time", "end_time", "repeat_count", "notes",
-        ]
+        fields = ["board", "start_time", "end_time", "repeat_count", "notes"]
 
     def validate_start_time(self, value):
         if value < timezone.now():
@@ -31,22 +25,21 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Attach the logged-in user automatically
         user = self.context["request"].user
         booking = Booking(user=user, **validated_data)
-        booking.save()  # save() calls full_clean() → conflict detection runs here
+        booking.save()
         return booking
 
 
 class BookingDetailSerializer(serializers.ModelSerializer):
-    """
-    Full booking details including nested board and user info.
-    Used for GET responses.
-    """
     board_detail = BoardMapSerializer(source="board", read_only=True)
     user_email = serializers.ReadOnlyField(source="user.email")
     duration_minutes = serializers.ReadOnlyField()
     is_cancellable = serializers.ReadOnlyField()
+    has_ad = serializers.SerializerMethodField()
+
+    def get_has_ad(self, obj):          # ← correct: hasattr not obj.ads.exists()
+        return hasattr(obj, "ad")
 
     class Meta:
         model = Booking
@@ -54,10 +47,9 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             "id", "user_email", "board", "board_detail",
             "start_time", "end_time", "duration_minutes",
             "repeat_count", "status", "total_price",
-            "is_cancellable", "notes", "created_at",
+            "is_cancellable", "notes", "created_at", "has_ad",
         ]
         read_only_fields = ["id", "status", "total_price", "created_at"]
-
 
 class AvailabilityRequestSerializer(serializers.Serializer):
     """
